@@ -10,49 +10,69 @@ public class Evaluator
 
     private static string InfixToPostfix(string infix)
     {
-        var postFix = string.Empty;
+        var postFix = "";
         var stack = new Stack<char>();
-        foreach (var item in infix)
+        int i = 0;
+
+        while (i < infix.Length)
         {
+            char item = infix[i];
+
+            // Ignorar espacios
+            if (item == ' ')
+            {
+                i++;
+                continue;
+            }
+
+            // Si es número o decimal
+            if (char.IsDigit(item) || item == '.')
+            {
+                string number = "";
+
+                while (i < infix.Length && (char.IsDigit(infix[i]) || infix[i] == '.'))
+                {
+                    number += infix[i];
+                    i++;
+                }
+
+                postFix += number + " ";
+                continue;
+            }
+
+            // Si es operador
             if (IsOperator(item))
             {
-                if (stack.Count == 0)
+                if (item == '(')
                 {
                     stack.Push(item);
                 }
+                else if (item == ')')
+                {
+                    while (stack.Peek() != '(')
+                    {
+                        postFix += stack.Pop() + " ";
+                    }
+                    stack.Pop();
+                }
                 else
                 {
-                    if (item == ')')
+                    while (stack.Count > 0 && PriorityInfix(item) <= PriorityStack(stack.Peek()))
                     {
-                        do
-                        {
-                            postFix += stack.Pop();
-                        } while (stack.Peek() != '(');
-                        stack.Pop();
+                        postFix += stack.Pop() + " ";
                     }
-                    else
-                    {
-                        if (PriorityInfix(item) > PriorityStack(stack.Peek()))
-                        {
-                            stack.Push(item);
-                        }
-                        else
-                        {
-                            postFix += stack.Pop();
-                            stack.Push(item);
-                        }
-                    }
+                    stack.Push(item);
                 }
             }
-            else
-            {
-                postFix += item;
-            }
+
+            i++;
         }
+
         while (stack.Count > 0)
         {
-            postFix += stack.Pop();
+            postFix += stack.Pop() + " ";
         }
+
         return postFix;
     }
 
@@ -81,27 +101,33 @@ public class Evaluator
     private static double EvaluatePostfix(string postfix)
     {
         var stack = new Stack<double>();
-        foreach (char item in postfix)
+
+        var tokens = postfix.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (var token in tokens)
         {
-            if (IsOperator(item))
+            // Si es número
+            if (double.TryParse(token, out double number))
+            {
+                stack.Push(number);
+            }
+            else if (token.Length == 1 && IsOperator(token[0]))
             {
                 var b = stack.Pop();
                 var a = stack.Pop();
-                stack.Push(item switch
+
+                stack.Push(token[0] switch
                 {
                     '+' => a + b,
                     '-' => a - b,
                     '*' => a * b,
-                    '/' => a / b,
+                    '/' => b == 0 ? throw new Exception("No se puede dividir por 0") : a / b,
                     '^' => Math.Pow(a, b),
-                    _ => throw new Exception("Sintax error."),
+                    _ => throw new Exception("Syntax error")
                 });
             }
-            else
-            {
-                stack.Push(double.Parse(item.ToString()));
-            }
         }
+
         return stack.Pop();
     }
 
